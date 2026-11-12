@@ -1,0 +1,12 @@
+import 'dotenv/config';
+import bcrypt from 'bcryptjs';
+import { connectDB } from './config/db.js';
+import { Admin } from './models/index.js';
+await connectDB();
+const email = process.env.ADMIN_EMAIL;
+const password = process.env.ADMIN_PASSWORD;
+if (!email || !password || password.length < 12) throw new Error('Set ADMIN_EMAIL and an ADMIN_PASSWORD of at least 12 characters in .env');
+const hash = await bcrypt.hash(password, 12);
+await Admin.findOneAndUpdate({email:email.toLowerCase()}, {email:email.toLowerCase(), password:hash, name:'MTAT Administrator'}, {upsert:true, new:true, setDefaultsOnInsert:true});
+console.log(`Admin account ready: ${email}`);
+process.exit(0);

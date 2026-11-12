@@ -1,0 +1,37 @@
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { connectDB } from './config/db.js';
+import authRoutes from './routes/auth.js';
+import resourceRoutes from './routes/resources.js';
+import enquiryRoutes from './routes/enquiries.js';
+import uploadRoutes from './routes/uploads.js';
+
+const app = express();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+app.use(cors({ origin: (process.env.FRONTEND_URL || 'http://localhost:3000').split(',').map(v=>v.trim()), credentials: true }));
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true }));
+if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
+app.use('/api/auth/login', rateLimit({ windowMs: 15*60*1000, limit: 10, standardHeaders: true, legacyHeaders: false }));
+app.use('/uploads', express.static(path.resolve(__dirname, process.env.UPLOAD_DIR || 'uploads')));
+app.get('/api/health', (req,res)=>res.json({status:'ok', service:'MTAT API'}));
+app.use('/api/auth', authRoutes);
+app.use('/api', resourceRoutes);
+app.use('/api/enquiries', enquiryRoutes);
+app.use('/api/uploads', uploadRoutes);
+app.use((req,res)=>res.status(404).json({message:'API route not found'}));
+app.use((err,req,res,next)=>{
+  console.error(err);
+  if (err.code === 11000) return res.status(409).json({message:'A record with this value already exists'});
+  if (err.name === 'ValidationError') return res.status(400).json({message:err.message});
+  res.status(500).json({message:process.env.NODE_ENV === 'production' ? 'Server error' : err.message});
+});
+const PORT = process.env.PORT || 8002;
+connectDB().then(()=>app.listen(PORT,()=>console.log(`MTAT API running on port ${PORT}`))).catch(err=>{console.error('Database connection failed:',err);process.exit(1);});
