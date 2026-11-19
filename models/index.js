@@ -309,3 +309,6 @@ export const SiteContent =
   models.SiteContent || model("SiteContent", siteContentSchema);
 
 export { HomePage } from "./homePage.js";
+export { ContactPage } from "./contactPage.js";
+export { AboutPage } from "./aboutPage.js";
+export { OurPresencePage } from "./OurPresencePage.js"
