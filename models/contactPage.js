@@ -65,6 +65,10 @@ const contactPageSchema = new mongoose.Schema(
         type: String,
         default: "Get In Touch",
       },
+      image: {
+    type: String,
+    default: "/Images/contact.webp",
+  },
       backgroundImage: {
         type: String,
         default: "/Images/contact.webp",
