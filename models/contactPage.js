@@ -178,6 +178,17 @@ const contactPageSchema = new mongoose.Schema(
     },
 
     enquiry: {
+recipientEmail: {
+  type: String,
+  trim: true,
+  lowercase: true,
+  required: true,
+  default: "info@mtaindia.in",
+  match: [
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+    "Please enter a valid email address",
+  ],
+},
       label: {
         type: String,
         default: "SEND AN ENQUIRY",
