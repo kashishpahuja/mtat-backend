@@ -161,28 +161,103 @@ router.get(
 );
 
 // Public brand details
+
+// PUBLIC: Brand details with categories and featured products
+
 router.get(
   "/public/brands/:slug",
   asyncHandler(async (req, res) => {
-    const brand = await Brand.findOne({
-      slug: req.params.slug,
-      isActive: true,
-    }).populate("category", "title slug");
+const brand = await Brand.findOne({
+  slug: req.params.slug.toLowerCase(),
+});
+
+console.log("Requested slug:", req.params.slug);
+console.log("Found brand:", brand);
+
+    console.log(
+      "Matching brand:",
+      brand
+        ? {
+            name: brand.name,
+            slug: brand.slug,
+            isActive: brand.isActive,
+            id: brand._id,
+          }
+        : "NOT FOUND"
+    );
 
     if (!brand) {
-      return res.status(404).json({ message: "Brand not found" });
+      const availableBrands = await Brand.find({})
+        .select("name slug isActive")
+        .lean();
+
+      console.log("Available brands:", availableBrands);
+
+      return res.status(404).json({
+        success: false,
+        message: "Brand not found",
+      });
+    }
+
+    if (!brand.isActive) {
+      return res.status(404).json({
+        success: false,
+        message: "Brand is inactive",
+      });
     }
 
     const categories = await BrandCategory.find({
       brand: brand._id,
       isActive: true,
-    }).sort({ sortOrder: 1 });
+    })
+      .sort({ sortOrder: 1 })
+      .lean();
 
-    res.json({ ...brand.toObject(), categories });
+    const featuredProducts = await Product.find({
+      brand: brand._id,
+      isActive: true,
+      isFeatured: true,
+    })
+      .populate("brandCategory", "title slug image")
+      .sort({ sortOrder: 1 })
+      .lean();
+
+    return res.json({
+      success: true,
+      data: {
+        ...brand.toObject(),
+        categories,
+        featuredProducts,
+      },
+    });
   })
 );
 
+
+// router.get(
+//   "/public/brands/:slug",
+//   asyncHandler(async (req, res) => {
+//     const brand = await Brand.findOne({
+//       slug: req.params.slug,
+//       isActive: true,
+//     }).populate("category", "title slug");
+
+//     if (!brand) {
+//       return res.status(404).json({ message: "Brand not found" });
+//     }
+
+//     const categories = await BrandCategory.find({
+//       brand: brand._id,
+//       isActive: true,
+//     }).sort({ sortOrder: 1 });
+
+//     res.json({ ...brand.toObject(), categories });
+//   })
+// );
+
 // Public brand categories
+
+
 router.get(
   "/public/brand-categories",
   asyncHandler(async (req, res) => {
