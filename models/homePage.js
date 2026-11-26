@@ -114,8 +114,6 @@ const HomePageSchema = new Schema(
         buttonLink: "/about",
         video: "/video/intro1.mp4",
         videoPoster: "/Images/company-video-poster.webp",
-        videoCaption:
-          "From precision machining to advanced manufacturing technologies, we connect industrial expertise with solutions built for progress.",
         partnersHeading: "Our Technology Partners",
         partnersSubheading:
           "Global Technology. Trusted Expertise. Local Support.",
