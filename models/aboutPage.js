@@ -1,7 +1,7 @@
 
 import mongoose from "mongoose";
 
-const getDefaultAboutContent = () => ({
+export const getDefaultAboutContent = () => ({
   seo: {
     title: "About MTAT Technologies | Machine Tools & Industrial Solutions",
     description:

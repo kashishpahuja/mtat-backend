@@ -1,72 +1,107 @@
 
 import { Router } from "express";
-import AboutPage from "../models/aboutPage.js";
+import AboutPage, {
+  getDefaultAboutContent,
+} from "../models/aboutPage.js";
+// import AboutPage from "../models/aboutPage.js";
 import { requireAdmin } from "../middleware/auth.js";
 
 const router = Router();
 
-const DEFAULT_CONTENT = {
-  seo: {
-    title: "",
-    description: "",
-    ogTitle: "",
-    ogDescription: "",
-  },
+const ALLOWED_SECTIONS = Object.keys(getDefaultAboutContent());
+function hasMeaningfulContent(content) {
+  if (!content || typeof content !== "object") return false;
 
-  hero: {
-    company: "",
-    title: "",
-    tagline: "",
-    image: { url: "", alt: "" },
-    scrollHint: "SCROLL TO EXPLORE",
-  },
+  const ignoredDefaults = new Set([
+    "SCROLL TO EXPLORE",
+    "Our Technology Partners",
+    "Enquire Now",
+    "/contact",
+  ]);
 
-  intro: {
-    label: "",
-    heading: "",
-    paragraphs: [],
-    image: { url: "", alt: "" },
-    caption: "",
-  },
+  if (Array.isArray(content)) {
+    return content.some((item) => hasMeaningfulContent(item));
+  }
 
-  timeline: {
-    label: "",
-    heading: "",
-    description: "",
-    milestones: [],
-  },
+  return Object.values(content).some((value) => {
+    if (typeof value === "string") {
+      return Boolean(value.trim()) && !ignoredDefaults.has(value.trim());
+    }
 
-  expertise: {
-    label: "",
-    heading: "",
-    intro: "",
-    items: [],
-  },
+    if (typeof value === "number" || typeof value === "boolean") {
+      return true;
+    }
 
-  partners: {
-    label: "Our Technology Partners",
-    description: "",
-    logos: [],
-  },
+    if (value && typeof value === "object") {
+      return hasMeaningfulContent(value);
+    }
 
-  industries: {
-    label: "",
-    heading: "",
-    intro: "",
-    items: [],
-  },
+    return false;
+  });
+}
 
-  cta: {
-    eyebrow: "",
-    title: "",
-    description: "",
-    buttonText: "Enquire Now",
-    buttonLink: "/contact",
-    backgroundImage: { url: "", alt: "" },
-  },
-};
+// const DEFAULT_CONTENT = {
+//   seo: {
+//     title: "",
+//     description: "",
+//     ogTitle: "",
+//     ogDescription: "",
+//   },
 
-const ALLOWED_SECTIONS = Object.keys(DEFAULT_CONTENT);
+//   hero: {
+//     company: "",
+//     title: "",
+//     tagline: "",
+//     image: { url: "", alt: "" },
+//     scrollHint: "SCROLL TO EXPLORE",
+//   },
+
+//   intro: {
+//     label: "",
+//     heading: "",
+//     paragraphs: [],
+//     image: { url: "", alt: "" },
+//     caption: "",
+//   },
+
+//   timeline: {
+//     label: "",
+//     heading: "",
+//     description: "",
+//     milestones: [],
+//   },
+
+//   expertise: {
+//     label: "",
+//     heading: "",
+//     intro: "",
+//     items: [],
+//   },
+
+//   partners: {
+//     label: "Our Technology Partners",
+//     description: "",
+//     logos: [],
+//   },
+
+//   industries: {
+//     label: "",
+//     heading: "",
+//     intro: "",
+//     items: [],
+//   },
+
+//   cta: {
+//     eyebrow: "",
+//     title: "",
+//     description: "",
+//     buttonText: "Enquire Now",
+//     buttonLink: "/contact",
+//     backgroundImage: { url: "", alt: "" },
+//   },
+// };
+
+// const ALLOWED_SECTIONS = Object.keys(DEFAULT_CONTENT);
 
 function validateContent(content) {
   if (
@@ -141,25 +176,27 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+
 // ADMIN: Get About page, including unpublished content.
-// Create an initial document if it does not exist.
+// Initialize missing or previously blank content from the original model.
 router.get("/admin", requireAdmin, async (req, res, next) => {
   try {
-    const page = await AboutPage.findOneAndUpdate(
-      { key: "about" },
-      {
-        $setOnInsert: {
-          key: "about",
-          content: DEFAULT_CONTENT,
-          published: false,
-        },
-      },
-      {
-        new: true,
-        upsert: true,
-        setDefaultsOnInsert: true,
-      }
-    ).lean();
+    let page = await AboutPage.findOne({ key: "about" });
+
+    // Create the document with the original model defaults.
+    if (!page) {
+      page = await AboutPage.create({
+        key: "about",
+        content: getDefaultAboutContent(),
+        published: false,
+      });
+    }
+
+    // Repair documents previously created with the empty route defaults.
+    else if (!hasMeaningfulContent(page.content)) {
+      page.content = getDefaultAboutContent();
+      await page.save();
+    }
 
     return res.json({
       success: true,
@@ -171,6 +208,39 @@ router.get("/admin", requireAdmin, async (req, res, next) => {
     next(error);
   }
 });
+
+
+
+// ADMIN: Get About page, including unpublished content.
+// Create an initial document if it does not exist.
+// router.get("/admin", requireAdmin, async (req, res, next) => {
+//   try {
+//     const page = await AboutPage.findOneAndUpdate(
+//       { key: "about" },
+//       {
+//         $setOnInsert: {
+//           key: "about",
+//           content: DEFAULT_CONTENT,
+//           published: false,
+//         },
+//       },
+//       {
+//         new: true,
+//         upsert: true,
+//         setDefaultsOnInsert: true,
+//       }
+//     ).lean();
+
+//     return res.json({
+//       success: true,
+//       data: page.content,
+//       published: page.published,
+//       updatedAt: page.updatedAt,
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// });
 
 // ADMIN: Save About page.
 router.put("/", requireAdmin, async (req, res, next) => {
